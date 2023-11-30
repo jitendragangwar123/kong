@@ -1486,6 +1486,11 @@ end
 
 
 function DAO:post_crud_event(operation, entity, old_entity, options)
+  -- Ease our lives and remove the nulls from the entities early, as we need to send them in an event later
+  -- on anyway.
+  entity = entity and remove_nulls(utils.cycle_aware_deep_copy(entity, true)) or null
+  old_entity = old_entity and remove_nulls(utils.cycle_aware_deep_copy(old_entity, true)) or null
+
   invalidate(operation, options.workspace, self.schema.name, entity, old_entity)
 
   if options and options.no_broadcast_crud_event then
@@ -1493,22 +1498,12 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
     return
   end
 
-  local entity_without_nulls
-  if entity then
-    entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(entity, true))
-  end
-
-  local old_entity_without_nulls
-  if old_entity then
-    old_entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(old_entity, true))
-  end
-
   if self.events then
     local event_data = {
       operation  = operation,
       schema     = self.schema,
-      entity     = entity_without_nulls,
-      old_entity = old_entity_without_nulls,
+      entity     = entity,
+      old_entity = old_entity,
     }
 
     post_worker_events(event_data)
