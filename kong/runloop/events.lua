@@ -162,47 +162,6 @@ local function cluster_balancer_upstreams_handler(data)
 end
 
 
-local function dao_crud_handler(data)
-  local schema = data.schema
-  if not schema then
-    log(ERR, "[events] missing schema in crud subscriber")
-    return
-  end
-
-  local operation = data.operation
-  if not operation then
-    log(ERR, "[events] missing operation in crud subscriber")
-    return
-  end
-
-  -- public worker events propagation
-
-  local entity_channel           = schema.table or schema.name
-  local entity_operation_channel = fmt("%s:%s", entity_channel, operation)
-
-  -- crud:routes
-  local ok, err = worker_events.post_local("crud", entity_channel, data)
-  if not ok then
-    log(ERR, "[events] could not broadcast crud event: ", err)
-    return
-  end
-
-  -- crud:routes:create
-  ok, err = worker_events.post_local("crud", entity_operation_channel, data)
-  if not ok then
-    log(ERR, "[events] could not broadcast crud event: ", err)
-    return
-  end
-end
-
-
-
-
-local LOCAL_HANDLERS = {
-  { "dao:crud", nil         , dao_crud_handler },
-}
-
-
 local BALANCER_HANDLERS = {
   { "crud"    , "targets"   , crud_targets_handler },
   { "crud"    , "upstreams" , crud_upstreams_handler },
@@ -232,17 +191,6 @@ local function subscribe_cluster_events(source, handler)
 end
 
 
-local function register_local_events()
-  for _, v in ipairs(LOCAL_HANDLERS) do
-    local source  = v[1]
-    local event   = v[2]
-    local handler = v[3]
-
-    subscribe_worker_events(source, event, handler)
-  end
-end
-
-
 local function register_balancer_events()
   for _, v in ipairs(BALANCER_HANDLERS) do
     local source  = v[1]
@@ -268,9 +216,6 @@ local function register_for_db()
   cluster_events = kong.cluster_events
 
   -- events dispatcher
-
-  register_local_events()
-
   register_balancer_events()
 end
 

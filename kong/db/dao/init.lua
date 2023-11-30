@@ -1462,6 +1462,29 @@ function DAO:row_to_entity(row, options)
 end
 
 
+local function post_worker_events(event_data)
+  -- public worker events propagation
+
+  local schema                   = event_data.schema
+  local entity_channel           = schema.table or schema.name
+  local entity_operation_channel = fmt("%s:%s", entity_channel, event_data.operation)
+
+  -- crud:routes
+  local ok, err = kong.worker_events.post_local("crud", entity_channel, event_data)
+  if not ok then
+    log(ERR, "[events] could not broadcast crud event: ", err)
+    return
+  end
+
+  -- crud:routes:create
+  ok, err = kong.worker_events.post_local("crud", entity_operation_channel, event_data)
+  if not ok then
+    log(ERR, "[events] could not broadcast crud event: ", err)
+    return
+  end
+end
+
+
 function DAO:post_crud_event(operation, entity, old_entity, options)
   invalidate(operation, options.workspace, self.schema.name, entity, old_entity)
 
@@ -1470,23 +1493,27 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
     return
   end
 
+  local entity_without_nulls
+  if entity then
+    entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(entity, true))
+  end
+
+  local old_entity_without_nulls
+  if old_entity then
+    old_entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(old_entity, true))
+  end
+
   if self.events then
-    local entity_without_nulls
-    if entity then
-      entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(entity, true))
-    end
-
-    local old_entity_without_nulls
-    if old_entity then
-      old_entity_without_nulls = remove_nulls(utils.cycle_aware_deep_copy(old_entity, true))
-    end
-
-    local ok, err = self.events.post_local("dao:crud", operation, {
+    local event_data = {
       operation  = operation,
       schema     = self.schema,
       entity     = entity_without_nulls,
       old_entity = old_entity_without_nulls,
-    })
+    }
+
+    post_worker_events(event_data)
+
+    local ok, err = self.events.post_local("dao:crud", operation, event_data)
     if not ok then
       log(ERR, "[db] failed to propagate CRUD operation: ", err)
     end
