@@ -670,7 +670,7 @@ _M._find_cascade_delete_entities = find_cascade_delete_entities
 
 local function propagate_cascade_delete_events(entries, options)
   for i = 1, #entries do
-    entries[i].dao:post_crud_event("delete", entries[i].entity, nil, options)
+    entries[i].dao:invalidate_cache_and_post_crud_events("delete", entries[i].entity, nil, options)
   end
 end
 
@@ -826,7 +826,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("update", row, rbw_entity, options)
+        self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
 
         return row
       end
@@ -879,9 +879,9 @@ local function generate_foreign_key_methods(schema)
         end
 
         if rbw_entity then
-          self:post_crud_event("update", row, rbw_entity, options)
+          self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
         else
-          self:post_crud_event("create", row, nil, options)
+          self:invalidate_cache_and_post_crud_events("create", row, nil, options)
         end
 
         return row
@@ -933,7 +933,7 @@ local function generate_foreign_key_methods(schema)
           return nil, tostring(err_t), err_t
         end
 
-        self:post_crud_event("delete", entity, nil, options)
+        self:invalidate_cache_and_post_crud_events("delete", entity, nil, options)
         propagate_cascade_delete_events(cascade_entries, options)
 
         return true
@@ -1159,7 +1159,7 @@ function DAO:insert(entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("create", row, nil, options)
+  self:invalidate_cache_and_post_crud_events("create", row, nil, options)
 
   return row
 end
@@ -1212,7 +1212,7 @@ function DAO:update(pk_or_entity, entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("update", row, rbw_entity, options)
+  self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
 
   return row
 end
@@ -1267,9 +1267,9 @@ function DAO:upsert(pk_or_entity, entity, options)
   end
 
   if rbw_entity then
-    self:post_crud_event("update", row, rbw_entity, options)
+    self:invalidate_cache_and_post_crud_events("update", row, rbw_entity, options)
   else
-    self:post_crud_event("create", row, nil, options)
+    self:invalidate_cache_and_post_crud_events("create", row, nil, options)
   end
 
   return row
@@ -1336,7 +1336,7 @@ function DAO:delete(pk_or_entity, options)
     return nil, tostring(err_t), err_t
   end
 
-  self:post_crud_event("delete", entity, nil, options)
+  self:invalidate_cache_and_post_crud_events("delete", entity, nil, options)
   propagate_cascade_delete_events(cascade_entries, options)
 
   return true
@@ -1462,30 +1462,7 @@ function DAO:row_to_entity(row, options)
 end
 
 
-local function post_worker_events(event_data)
-  -- public worker events propagation
-
-  local schema                   = event_data.schema
-  local entity_channel           = schema.table or schema.name
-  local entity_operation_channel = fmt("%s:%s", entity_channel, event_data.operation)
-
-  -- crud:routes
-  local ok, err = kong.worker_events.post_local("crud", entity_channel, event_data)
-  if not ok then
-    log(ERR, "[events] could not broadcast crud event: ", err)
-    return
-  end
-
-  -- crud:routes:create
-  ok, err = kong.worker_events.post_local("crud", entity_operation_channel, event_data)
-  if not ok then
-    log(ERR, "[events] could not broadcast crud event: ", err)
-    return
-  end
-end
-
-
-function DAO:post_crud_event(operation, entity, old_entity, options)
+function DAO:invalidate_cache_and_post_crud_events(operation, entity, old_entity, options)
   -- Ease our lives and remove the nulls from the entities early, as we need to send them in an event later
   -- on anyway.
   entity = entity and remove_nulls(utils.cycle_aware_deep_copy(entity, true)) or nil
@@ -1506,7 +1483,24 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
       old_entity = old_entity,
     }
 
-    post_worker_events(event_data)
+    -- public worker events propagation
+    local schema                   = event_data.schema
+    local entity_channel           = schema.table or schema.name
+    local entity_operation_channel = fmt("%s:%s", entity_channel, event_data.operation)
+
+    -- crud:routes
+    local ok, err = self.events.post_local("crud", entity_channel, event_data)
+    if not ok then
+      log(ERR, "[events] could not broadcast crud event: ", err)
+      return
+    end
+
+    -- crud:routes:create
+    ok, err = self.events.post_local("crud", entity_operation_channel, event_data)
+    if not ok then
+      log(ERR, "[events] could not broadcast crud event: ", err)
+      return
+    end
 
     local ok, err = self.events.post_local("dao:crud", operation, event_data)
     if not ok then
