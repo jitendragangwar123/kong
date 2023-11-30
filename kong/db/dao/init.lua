@@ -1491,7 +1491,7 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
   entity = entity and remove_nulls(utils.cycle_aware_deep_copy(entity, true)) or null
   old_entity = old_entity and remove_nulls(utils.cycle_aware_deep_copy(old_entity, true)) or null
 
-  invalidate(operation, options.workspace, self.schema.name, entity, old_entity)
+  invalidate(operation, options and options.workspace or nil, self.schema.name, entity, old_entity)
 
   if options and options.no_broadcast_crud_event then
     -- This option is set when we write an audit record or when importing a database.

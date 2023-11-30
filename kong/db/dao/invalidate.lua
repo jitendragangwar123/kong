@@ -84,6 +84,10 @@ end
 
 
 local function invalidate(operation, workspace, schema_name, entity, old_entity)
+  if not kong.core_cache or not kong.core_cache.invalidate then
+    return
+  end
+
   workspaces.set_workspace(workspace)
 
   local invalidated = false
