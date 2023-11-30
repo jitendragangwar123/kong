@@ -84,7 +84,7 @@ end
 
 
 local function invalidate(operation, workspace, schema_name, entity, old_entity)
-  if not kong.core_cache or not kong.core_cache.invalidate then
+  if not kong or not kong.core_cache or not kong.core_cache.invalidate then
     return
   end
 
