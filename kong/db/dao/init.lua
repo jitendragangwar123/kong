@@ -1466,6 +1466,7 @@ function DAO:post_crud_event(operation, entity, old_entity, options)
   invalidate(operation, options.workspace, self.schema.name, entity, old_entity)
 
   if options and options.no_broadcast_crud_event then
+    -- This option is set when we write an audit record or when importing a database.
     return
   end
 
