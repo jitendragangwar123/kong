@@ -894,7 +894,7 @@ return {
 
   init_worker = {
     before = function()
-      IS_DEBUG = (kong.configuration.log_level == "debug")
+      IS_DEBUG = true --(kong.configuration.log_level == "debug")
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
@@ -976,6 +976,9 @@ return {
           if err then
             log(ERR, err)
           end
+          if rebuild_transaction_id then
+            log(INFO, "beginning configuration processing for transaction ID " .. rebuild_transaction_id)
+          end
 
           local router_update_status, err = rebuild_router({
             name = "router",
@@ -1006,11 +1009,8 @@ return {
             end
           end
 
-          if rebuild_transaction_id then
-            -- Yield to process any pending invalidations
-            utils.yield()
-
-            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
+          if rebuild_transaction_id and global.CURRENT_TRANSACTION_ID ~= rebuild_transaction_id then
+            log(INFO, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
             global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
         end
@@ -1116,6 +1116,7 @@ return {
         local if_kong_transaction_id = kong.request and kong.request.get_header('if-kong-test-transaction-id')
         if if_kong_transaction_id then
           if_kong_transaction_id = tonumber(if_kong_transaction_id)
+          kong.log.info((if_kong_transaction_id > global.CURRENT_TRANSACTION_ID and "REJECTED" or "SUCCESSFUL"), " conditional request for transaction id ", if_kong_transaction_id, " global is ", global.CURRENT_TRANSACTION_ID)
           if if_kong_transaction_id and if_kong_transaction_id > global.CURRENT_TRANSACTION_ID then
             return kong.response.error(
                     503,

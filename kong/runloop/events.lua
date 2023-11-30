@@ -12,7 +12,6 @@ local utils_split  = utils.split
 
 
 local ngx   = ngx
-local null  = ngx.null
 local log   = ngx.log
 local ERR   = ngx.ERR
 local CRIT  = ngx.CRIT
@@ -21,7 +20,6 @@ local DEBUG = ngx.DEBUG
 
 -- init in register_events()
 local db
-local kong_cache
 local core_cache
 local worker_events
 local cluster_events
@@ -265,7 +263,6 @@ end
 
 local function register_for_db()
   -- initialize local local_events hooks
-  kong_cache     = kong.cache
   core_cache     = kong.core_cache
   worker_events  = kong.worker_events
   cluster_events = kong.cluster_events
