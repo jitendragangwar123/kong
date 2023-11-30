@@ -1885,7 +1885,7 @@ function Kong.admin_header_filter()
     header[headers.SERVER] = nil
   end
 
-  if --[[ kong.configuration.log_level == "debug" and ]] ngx.ctx.transaction_id then
+  if kong.configuration.log_level == "debug" and ngx.ctx.transaction_id then
     kong.log.info("Reporting Kong-Test-Transaction-Id ", ngx.ctx.transaction_id)
     ngx.header["Kong-Test-Transaction-Id"] = ngx.ctx.transaction_id
   end

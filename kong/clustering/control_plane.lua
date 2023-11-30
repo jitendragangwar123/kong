@@ -135,10 +135,10 @@ function _M:export_deflated_reconfigure_payload()
   }
 
   local current_transaction_id
-  --if kong.configuration.log_level == "debug" then
+  if kong.configuration.log_level == "debug" then
     current_transaction_id = global.get_current_transaction_id()
     payload.current_transaction_id = current_transaction_id
-  --end
+  end
 
   self.reconfigure_payload = payload
 
