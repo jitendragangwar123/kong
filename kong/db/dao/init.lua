@@ -1462,11 +1462,20 @@ function DAO:row_to_entity(row, options)
 end
 
 
+local function make_clean_entity(entity)
+  if entity then
+    return remove_nulls(utils.cycle_aware_deep_copy(entity, true))
+  else
+    return nil
+  end
+end
+
+
 function DAO:invalidate_cache_and_post_crud_events(operation, entity, old_entity, options)
   -- Ease our lives and remove the nulls from the entities early, as we need to send them in an event later
   -- on anyway.
-  entity = entity and remove_nulls(utils.cycle_aware_deep_copy(entity, true)) or nil
-  old_entity = old_entity and remove_nulls(utils.cycle_aware_deep_copy(old_entity, true)) or nil
+  entity = make_clean_entity(entity)
+  old_entity = make_clean_entity(old_entity)
 
   invalidate(operation, options and options.workspace or nil, self.schema.name, entity, old_entity)
 
