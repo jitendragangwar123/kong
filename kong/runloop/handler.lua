@@ -977,7 +977,7 @@ return {
             log(ERR, err)
           end
           if rebuild_transaction_id then
-            log(INFO, "beginning configuration processing for transaction ID " .. rebuild_transaction_id)
+            log(DEBUG, "beginning configuration processing for transaction ID " .. rebuild_transaction_id)
           end
 
           local router_update_status, err = rebuild_router({
@@ -1010,7 +1010,7 @@ return {
           end
 
           if rebuild_transaction_id and global.CURRENT_TRANSACTION_ID ~= rebuild_transaction_id then
-            log(INFO, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
+            log(DEBUG, "configuration processing completed for transaction ID " .. rebuild_transaction_id)
             global.CURRENT_TRANSACTION_ID = rebuild_transaction_id
           end
         end
