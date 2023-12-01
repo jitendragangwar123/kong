@@ -894,7 +894,7 @@ return {
 
   init_worker = {
     before = function()
-      IS_DEBUG = true --(kong.configuration.log_level == "debug")
+      IS_DEBUG = (kong.configuration.log_level == "debug")
       -- TODO: PR #9337 may affect the following line
       local prefix = kong.configuration.prefix or ngx.config.prefix()
 
