@@ -2,12 +2,13 @@ local kong_global = require "kong.global"
 local workspaces = require "kong.workspaces"
 local kong_pdk_vault = require "kong.pdk.vault"
 local certificate  = require "kong.runloop.certificate"
+local constants = require "kong.constants"
 
 local null = ngx.null
 local log = ngx.log
 local ERR = ngx.ERR
 local DEBUG = ngx.DEBUG
-
+local ENTITY_CACHE_STORE = constants.ENTITY_CACHE_STORE
 
 local function invalidate_wasm_filters(schema_name, operation)
   -- cache is invalidated on service/route deletion to ensure we don't
@@ -92,8 +93,8 @@ local function invalidate(operation, workspace, schema_name, entity, old_entity)
 
   local invalidated = false
   local function invalidate_key(key)
-    kong.core_cache:invalidate(key)
-    kong.cache:invalidate(key)
+    local cache_obj = kong[ENTITY_CACHE_STORE[schema_name]]
+    cache_obj:invalidate(key)
     invalidated = true
   end
 
