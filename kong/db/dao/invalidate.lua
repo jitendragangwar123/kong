@@ -93,6 +93,7 @@ local function invalidate(operation, workspace, schema_name, entity, old_entity)
   local invalidated = false
   local function invalidate_key(key)
     kong.core_cache:invalidate(key)
+    kong.cache:invalidate(key)
     invalidated = true
   end
 
